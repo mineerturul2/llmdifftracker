@@ -17,11 +17,13 @@ class LLMDiffTracker:
         api_key: str,
         cache_dir: str = "./code_dump_cache",
         file_pattern: str = "*.py",
+        exclude_patterns: Optional[list] = None,
         system_prompt: str = "Summarize code changes. Be concise, and only include the most important changes. If it's too much, just return 'Too much code changes.'.",
         use_fal: bool = True,
     ):
         self.cache_dir = cache_dir
         self.file_pattern = file_pattern
+        self.exclude_patterns = exclude_patterns or []
         self.system_prompt = system_prompt
         self.use_fal = use_fal
         if use_fal:
@@ -40,6 +42,8 @@ class LLMDiffTracker:
     def get_current_dump(self) -> str:
         file_contents = []
         for file in glob.glob(self.file_pattern, recursive=True):
+            if any(glob.fnmatch.fnmatch(file, pat) for pat in self.exclude_patterns):
+                continue
             with open(file, "r", encoding="utf-8") as f:
                 file_contents.append(f"# FILE: {file}\n" + f.read())
         return "\n".join(file_contents)
