@@ -126,7 +126,14 @@ class LLMDiffTracker:
         return diff_text, summary
 
 
-def patch_wandb(generate_run_name: bool = True, log_table: bool = True):
+def patch_wandb(
+    generate_run_name: bool = True,
+    log_table: bool = True,
+    cache_dir: str = "./code_dump_cache",
+    file_pattern: str = "*.py",
+    exclude_patterns: Optional[list] = None,
+    system_prompt: str = "Summarize code changes. Be concise, and only include the most important changes. If it's too much, just return 'Too much code changes.'.",
+):
     """Patches wandb.init to automatically track and log code changes."""
     try:
         import wandb
@@ -142,6 +149,10 @@ def patch_wandb(generate_run_name: bool = True, log_table: bool = True):
         tracker = LLMDiffTracker(
             api_key=os.getenv("FAL_KEY", os.getenv("OPENAI_API_KEY")),
             use_fal="FAL_KEY" in os.environ,
+            cache_dir=cache_dir,
+            file_pattern=file_pattern,
+            exclude_patterns=exclude_patterns,
+            system_prompt=system_prompt,
         )
 
         diff_text, summary = tracker.track_changes()
