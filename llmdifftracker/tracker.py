@@ -2,7 +2,7 @@ import openai
 import os
 import glob
 import difflib
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union, List
 from pydantic import BaseModel, Field
 
 
@@ -16,13 +16,13 @@ class LLMDiffTracker:
         self,
         api_key: str,
         cache_dir: str = "./code_dump_cache",
-        file_pattern: str = "*.py",
+        file_pattern: Union[str, List[str]] = "*.py",
         exclude_patterns: Optional[list] = None,
         system_prompt: str = "Summarize code changes. Be concise, and only include the most important changes. If it's too much, just return 'Too much code changes.'.",
         use_fal: bool = True,
     ):
         self.cache_dir = cache_dir
-        self.file_pattern = file_pattern
+        self.file_pattern = [file_pattern] if isinstance(file_pattern, str) else file_pattern
         self.exclude_patterns = exclude_patterns or []
         self.system_prompt = system_prompt
         self.use_fal = use_fal
@@ -41,11 +41,12 @@ class LLMDiffTracker:
 
     def get_current_dump(self) -> str:
         file_contents = []
-        for file in glob.glob(self.file_pattern, recursive=True):
-            if any(glob.fnmatch.fnmatch(file, pat) for pat in self.exclude_patterns):
-                continue
-            with open(file, "r", encoding="utf-8") as f:
-                file_contents.append(f"# FILE: {file}\n" + f.read())
+        for pattern in self.file_pattern:
+            for file in glob.glob(pattern, recursive=True):
+                if any(glob.fnmatch.fnmatch(file, pat) for pat in self.exclude_patterns):
+                    continue
+                with open(file, "r", encoding="utf-8") as f:
+                    file_contents.append(f"# FILE: {file}\n" + f.read())
         return "\n".join(file_contents)
 
     def get_diff(self, old_text: str, new_text: str) -> str:
@@ -87,8 +88,7 @@ class LLMDiffTracker:
                 response_format=DiffSummary,
             )
             return response.choices[0].message.parsed
-        
-        
+
 
     def track_changes(self) -> Optional[Tuple[str, str]]:
         """Track code changes and return diff text and summary.
@@ -130,7 +130,7 @@ def patch_wandb(
     generate_run_name: bool = True,
     log_table: bool = True,
     cache_dir: str = "./code_dump_cache",
-    file_pattern: str = "*.py",
+    file_pattern: Union[str, List[str]] = "*.py",
     exclude_patterns: Optional[list] = None,
     system_prompt: str = "Summarize code changes. Be concise, and only include the most important changes. If it's too much, just return 'Too much code changes.'.",
 ):
