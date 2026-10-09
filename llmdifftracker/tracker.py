@@ -20,12 +20,14 @@ class LLMDiffTracker:
         exclude_patterns: Optional[list] = None,
         system_prompt: str = "Summarize code changes. Be concise, and only include the most important changes. If it's too much, just return 'Too much code changes.'.",
         use_fal: bool = True,
+        max_diff_length: int = 10000,
     ):
         self.cache_dir = cache_dir
         self.file_pattern = [file_pattern] if isinstance(file_pattern, str) else file_pattern
         self.exclude_patterns = exclude_patterns or []
         self.system_prompt = system_prompt
         self.use_fal = use_fal
+        self.max_diff_length = max_diff_length
         if use_fal:
             os.environ["FAL_KEY"] = api_key
             import fal_client
@@ -58,7 +60,7 @@ class LLMDiffTracker:
         return "\n".join(diff)
 
     def summarize_diff(self, diff_text: str) -> str:
-        diff_text = diff_text[:10000]
+        diff_text = diff_text[:self.max_diff_length]
         if self.use_fal:
 
             def on_queue_update(update):
@@ -133,6 +135,7 @@ def patch_wandb(
     file_pattern: Union[str, List[str]] = "*.py",
     exclude_patterns: Optional[list] = None,
     system_prompt: str = "Summarize code changes. Be concise, and only include the most important changes. If it's too much, just return 'Too much code changes.'.",
+    max_diff_length: int = 10000,
 ):
     """Patches wandb.init to automatically track and log code changes."""
     try:
@@ -153,6 +156,7 @@ def patch_wandb(
             file_pattern=file_pattern,
             exclude_patterns=exclude_patterns,
             system_prompt=system_prompt,
+            max_diff_length=max_diff_length,
         )
 
         diff_text, summary = tracker.track_changes()
